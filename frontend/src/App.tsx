@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import './App.css';
+// Husk at stien skal matche hvor du lagde filen. 
+// Hvis den ligger i src/assets/:
+import logo from './assets/logo.jpg'; 
 
-// Typer
+// --- TYPES ---
+// Vi definerer interfaces der matcher API'ets respons 1:1
 interface LineItem {
   id: string;
   product_name: string;
@@ -18,8 +22,15 @@ interface OrderResponse {
   items: LineItem[];
 }
 
+interface SuccessResponse {
+  message: string;
+  return_id: string;
+  tracking_number: string;
+  tenant_used: string;
+}
+
 function App() {
-  // State til Flow
+  // --- STATE ---
   const [step, setStep] = useState<'SEARCH' | 'SELECT' | 'SUCCESS'>('SEARCH');
   
   // Data State
@@ -31,9 +42,9 @@ function App() {
   // UI State
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successData, setSuccessData] = useState<any>(null);
+  const [successData, setSuccessData] = useState<SuccessResponse | null>(null);
 
-  // 1. Søg efter ordre
+  // --- 1. SØG EFTER ORDRE ---
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -46,19 +57,19 @@ function App() {
         body: JSON.stringify({ order_number: orderNumber, email: email }),
       });
 
-      if (!response.ok) throw new Error('Ordren blev ikke fundet');
+      if (!response.ok) throw new Error('Ordren blev ikke fundet (Prøv 1001 / test@test.dk)');
 
       const data = await response.json();
       setOrderData(data);
-      setStep('SELECT'); // Gå til næste skærm
+      setStep('SELECT'); 
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Der opstod en ukendt fejl');
     } finally {
       setLoading(false);
     }
   };
 
-  // 2. Håndter valg af vare (Checkbox)
+  // --- 2. HÅNDTER VALG (Checkbox Logic) ---
   const toggleSelection = (id: string) => {
     const newSelection = new Set(selectedIds);
     if (newSelection.has(id)) {
@@ -69,7 +80,7 @@ function App() {
     setSelectedIds(newSelection);
   };
 
-  // 3. Indsend Retursag
+  // --- 3. INDSEND RETURSAG ---
   const handleSubmitReturn = async () => {
     if (selectedIds.size === 0) {
       alert("Du skal vælge mindst én vare!");
@@ -77,14 +88,16 @@ function App() {
     }
     setLoading(true);
 
-    // Find de fulde objekter for de valgte ID'er
+    // Mapper data til Backend Schema
+    // BEMÆRK: Vi sender quantity: 1 som standard her. 
+    // I en version 2.0 bør vi lade brugeren vælge antal, hvis de har købt flere af samme vare.
     const itemsToSend = orderData?.items
       .filter(i => selectedIds.has(i.id))
       .map(i => ({
         id: i.id,
         product_name: i.product_name,
-        quantity: 1, // Vi hardcoder 1 stk for nu for simpelhedens skyld
-        reason: 'NOT_SPECIFIED'
+        quantity: 1, 
+        reason: 'NOT_SPECIFIED' 
       }));
 
     try {
@@ -102,7 +115,7 @@ function App() {
       
       const result = await response.json();
       setSuccessData(result);
-      setStep('SUCCESS'); // Gå til slut skærm
+      setStep('SUCCESS'); 
 
     } catch (err: any) {
       alert("Fejl: " + err.message);
@@ -111,44 +124,56 @@ function App() {
     }
   };
 
+  // --- RENDER ---
   return (
-    <div className="container">
-      <header>
-        <h1>ReturnWiz 📦</h1>
+    <div className="container" style={{maxWidth: '600px', margin: '0 auto', fontFamily: 'sans-serif'}}>
+      
+      {/* HEADER MED LOGO */}
+      <header style={{textAlign: 'center', padding: '2rem 0'}}>
+        <img 
+            src={logo} 
+            alt="ReturnWiz Logo" 
+            style={{ width: '120px', marginBottom: '10px' }} 
+        />
+        <h1 style={{margin: 0, color: '#2c3e50'}}>ReturnWiz</h1>
       </header>
 
       {/* TRIN 1: SØG */}
       {step === 'SEARCH' && (
-        <div className="card">
+        <div className="card" style={cardStyle}>
           <h2>Find din ordre</h2>
           <form onSubmit={handleSearch}>
-            <div className="form-group">
-              <label>Ordrenummer</label>
+            <div className="form-group" style={{marginBottom: '15px'}}>
+              <label style={{display:'block', marginBottom:'5px'}}>Ordrenummer</label>
               <input
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
                 placeholder="F.eks. 1001"
                 required
+                style={inputStyle}
               />
             </div>
-            <div className="form-group">
-              <label>Email</label>
+            <div className="form-group" style={{marginBottom: '15px'}}>
+              <label style={{display:'block', marginBottom:'5px'}}>Email</label>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder="Email brugt ved køb"
                 required
+                style={inputStyle}
               />
             </div>
-            <button disabled={loading}>{loading ? 'Leder...' : 'Start Retur'}</button>
-            {error && <p className="error-msg">{error}</p>}
+            <button disabled={loading} style={buttonStyle}>
+                {loading ? 'Leder...' : 'Start Retur'}
+            </button>
+            {error && <p style={{color: 'red', marginTop: '10px'}}>{error}</p>}
           </form>
         </div>
       )}
 
       {/* TRIN 2: VÆLG VARER */}
       {step === 'SELECT' && orderData && (
-        <div className="result-area">
+        <div className="result-area" style={cardStyle}>
           <h2>Vælg varer til retur</h2>
           <div className="item-list">
             {orderData.items.map((item) => {
@@ -156,56 +181,123 @@ function App() {
               return (
                 <div 
                   key={item.id} 
-                  className={`item-card ${isSelected ? 'selected' : ''}`}
                   onClick={() => toggleSelection(item.id)}
-                  style={{cursor: 'pointer', border: isSelected ? '2px solid #00CB00' : '1px solid #eee'}}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '10px',
+                    marginBottom: '10px',
+                    borderRadius: '8px',
+                    cursor: 'pointer', 
+                    border: isSelected ? '2px solid #7bc144' : '1px solid #eee',
+                    backgroundColor: isSelected ? '#f9fff9' : 'white'
+                  }}
                 >
-                  {/* Fake Checkbox */}
+                  {/* Visuel Checkbox */}
                   <div style={{
-                    width: 20, height: 20, 
+                    width: 24, height: 24, 
                     borderRadius: '50%', 
-                    border: '2px solid #ddd',
-                    background: isSelected ? '#00CB00' : 'white',
-                    marginRight: 10
-                  }} />
+                    border: isSelected ? 'none' : '2px solid #ddd',
+                    background: isSelected ? '#7bc144' : 'white',
+                    marginRight: 15,
+                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    color: 'white', fontWeight: 'bold'
+                  }}>
+                    {isSelected && '✓'}
+                  </div>
                   
-                  <img src={item.image_url} alt="" width="50" />
+                  <img src={item.image_url} alt="" style={{width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px', marginRight: '15px'}} />
+                  
                   <div className="item-info">
-                    <h3>{item.product_name}</h3>
-                    <span>{item.variant_name}</span>
+                    <h3 style={{margin: '0 0 5px 0', fontSize: '1rem'}}>{item.product_name}</h3>
+                    <span style={{color: '#666', fontSize: '0.9rem'}}>{item.variant_name}</span>
                   </div>
                 </div>
               );
             })}
           </div>
           
-          <div style={{marginTop: 20}}>
-            <button onClick={handleSubmitReturn} disabled={loading} style={{opacity: selectedIds.size === 0 ? 0.5 : 1}}>
+          <div style={{marginTop: 20, display: 'flex', gap: '10px'}}>
+             <button 
+                className="secondary-btn" 
+                onClick={() => setStep('SEARCH')}
+                style={secondaryButtonStyle}
+             >
+                 Annuller
+             </button>
+            <button 
+                onClick={handleSubmitReturn} 
+                disabled={loading || selectedIds.size === 0} 
+                style={{...buttonStyle, opacity: selectedIds.size === 0 ? 0.6 : 1}}
+            >
               {loading ? 'Opretter...' : `Returner ${selectedIds.size} varer`}
             </button>
-            <button className="secondary-btn" onClick={() => setStep('SEARCH')}>Annuller</button>
           </div>
         </div>
       )}
 
       {/* TRIN 3: SUCCESS */}
       {step === 'SUCCESS' && successData && (
-        <div className="card" style={{textAlign: 'center'}}>
-          <h2 style={{color: '#00CB00'}}>Tak for din retur!</h2>
-          <p>Din retursag er oprettet.</p>
+        <div className="card" style={{...cardStyle, textAlign: 'center'}}>
+           {/* Vi kan genbruge logoet her eller en success icon */}
+          <h2 style={{color: '#7bc144'}}>Tak for din retur!</h2>
+          <p>Din retursag er oprettet hos {successData.tenant_used}.</p>
           
-          <div style={{background: '#f0f0f0', padding: 20, margin: '20px 0', borderRadius: 8}}>
-            <strong>Tracking Nummer:</strong><br/>
-            <span style={{fontSize: '1.2rem', fontFamily: 'monospace'}}>{successData.tracking_number}</span>
+          <div style={{background: '#f4f4f4', padding: '20px', margin: '20px 0', borderRadius: '8px', border: '1px dashed #ccc'}}>
+            <strong>Dit Tracking Nummer:</strong><br/>
+            <span style={{fontSize: '1.4rem', fontFamily: 'monospace', color: '#333', display: 'block', marginTop: '5px'}}>
+                {successData.tracking_number}
+            </span>
           </div>
 
-          <p>Vis dette nummer i pakkeshoppen, eller vent på din label.</p>
+          <p style={{fontSize: '0.9rem', color: '#666'}}>
+            Vis dette nummer i pakkeshoppen for at få printet din label.
+          </p>
           
-          <button onClick={() => window.location.reload()}>Start forfra</button>
+          <button onClick={() => window.location.reload()} style={buttonStyle}>Start forfra</button>
         </div>
       )}
     </div>
   );
 }
+
+// --- STYLING CONSTANTS (For at holde det clean) ---
+const cardStyle: React.CSSProperties = {
+    backgroundColor: 'white',
+    padding: '20px',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+};
+
+const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '12px',
+    borderRadius: '4px',
+    border: '1px solid #ccc',
+    boxSizing: 'border-box',
+    fontSize: '16px'
+};
+
+const buttonStyle: React.CSSProperties = {
+    backgroundColor: '#7bc144', // Bring Green
+    color: 'white',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '4px',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    flex: 1
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+    backgroundColor: '#eee',
+    color: '#333',
+    border: 'none',
+    padding: '12px 20px',
+    borderRadius: '4px',
+    fontSize: '16px',
+    cursor: 'pointer'
+};
 
 export default App;

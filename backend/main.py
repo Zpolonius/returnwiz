@@ -36,19 +36,18 @@ class LineItemSchema(BaseModel):
     price: int # Pris i øre
     quantity: int
 
+class ReturnItemRequest(BaseModel):
+    id: str         # Shopify Line Item ID
+    quantity: int
+    reason: str
+    product_name: str
+
 class OrderResponse(BaseModel):
     order_id: str
     order_number: str
     customer_email: str
     currency: str
     items: List[LineItemSchema]
-
-    #endpoint til at håndtere retur request
-    class ReturnItemRequest(BaseModel):
-    id: str         # Shopify Line Item ID
-    quantity: int
-    reason: str
-    product_name: str
 
 class CreateReturnRequest(BaseModel):
     order_number: str
@@ -123,8 +122,22 @@ def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
     # A. Opret selve retursagen i DB
     # (Vi bruger en tilfældig Tenant ID her, da vi ikke har login systemet på plads endnu)
     # I produktion ville vi slå tenant op baseret på domænet.
-    dummy_tenant_id = uuid.uuid4() 
-    
+    tenant = db.query(models.Tenant).first() 
+
+    if not tenant:
+        # Hvis databasen er tom (første kørsel), opretter vi en 'seed' tenant
+        print("Ingen tenant fundet. Opretter 'Default Webshop'...")
+        tenant = models.Tenant(
+            # Jeg antager disse felter findes i din model. Tilpas hvis nødvendigt.
+            name="Min Webshop", 
+            email="shop@example.com"
+            # id bliver typisk genereret automatisk af DB eller i models.py
+        )
+        db.add(tenant)
+        db.commit()
+        db.refresh(tenant)
+    real_tenant_id = tenant.id
+
     new_return = models.ReturnOrder(
         shopify_order_number=request.order_number,
         customer_email=request.email,
@@ -132,7 +145,7 @@ def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
         tracking_number=f"TEST-TRACK-{uuid.uuid4().hex[:8].upper()}",
         label_url="https://www.bring.no/static/img/logo.png", # Placeholder
         status="CREATED",
-        tenant_id=dummy_tenant_id 
+        tenant_id=real_tenant_id
     )
     db.add(new_return)
     db.commit() # Nu har retursagen et ID (new_return.id)
@@ -140,19 +153,22 @@ def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
 
     # B. Gem de valgte varer i DB
     for item in request.items:
-        db_item = models.ReturnItem(
-            return_id=new_return.id,
-            shopify_line_item_id=item.id,
-            product_name=item.product_name,
-            quantity=item.quantity,
-            reason_code=item.reason
-        )
-        db.add(db_item)
+      if item.quantity > 0:
+            db_item = models.ReturnItem(
+                return_id=new_return.id,
+                shopify_line_item_id=item.id,
+                product_name=item.product_name,
+                quantity=item.quantity,
+                reason_code=item.reason
+            )
+            db.add(db_item)
     
     db.commit()
 
+    print(f"Succes! Retursag {new_return.id} oprettet for {tenant.name}")
     return {
-        "message": "Retursag oprettet",
-        "return_id": new_return.id,
-        "tracking_number": new_return.tracking_number
+        "message": "Retursag oprettet succesfuldt",
+        "return_id": str(new_return.id), # Konverter UUID til string for sikker JSON
+        "tracking_number": new_return.tracking_number,
+        "tenant_used": tenant.name
     }
