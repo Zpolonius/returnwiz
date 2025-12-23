@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -9,6 +10,15 @@ import models
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ReturnWiz API")
+
+# Dette tillader React (port 5173) at kalde Python (port 8000)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"], # Kun vores frontend må kalde
+    allow_credentials=True,
+    allow_methods=["*"], # Tillad alle metoder (GET, POST osv.)
+    allow_headers=["*"],
+)
 
 # --- 1. DATAMODELLER (Schemas) ---
 # Disse sikrer at data sendt frem og tilbage overholder reglerne
