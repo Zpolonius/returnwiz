@@ -9,11 +9,12 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    shopify_domain = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    shopify_domain = Column(String, unique=True, index=True, nullable=True)
     shop_name = Column(String)
     
     # Her gemmer vi tokens (I produktion skal disse krypteres!)
-    access_token = Column(String, nullable=False) 
+    access_token = Column(String, nullable=True) 
     
     # Bring Indstillinger
     bring_customer_number = Column(String, nullable=True)

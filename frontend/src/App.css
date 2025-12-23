@@ -1,86 +1,173 @@
+/* --- Posten Bring Design System Variables --- */
+:root {
+  --bring-green: #7bc144;
+  --bring-green-dark: #5a962e;
+  --bring-black: #2c3e50;
+  --bring-gray-light: #f1f1f1;
+  --bring-gray-border: #dcdcdc;
+  --white: #ffffff;
+  --error-red: #d93d3d;
+  --radius: 4px;
+}
+
 body {
-  background-color: #f4f4f4;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bring-gray-light);
+  color: var(--bring-black);
+  font-family: "Foundry Monoline", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
   display: flex;
   justify-content: center;
-  padding-top: 50px;
+  min-height: 100vh;
 }
 
 .container {
   width: 100%;
-  max-width: 400px;
-  text-align: center;
+  max-width: 520px;
+  margin: 40px 20px;
 }
 
-h1 { color: #333; margin-bottom: 5px; }
+/* --- HEADER & LOGO FIX --- */
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.logo {
+  /* Dette sikrer proportionerne holder */
+  max-width: 140px;      /* Maks bredde */
+  max-height: 80px;      /* Maks højde */
+  width: auto;           /* Lad bredden tilpasse sig */
+  height: auto;          /* Lad højden tilpasse sig */
+  display: block;
+  margin: 0 auto 10px auto;
+  object-fit: contain;   /* Sikrer billedet ikke croppes eller strækkes */
+}
 
 .card {
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  background-color: var(--white);
+  padding: 30px;
+  border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0,0,0,0.02);
 }
 
-.form-group {
-  margin-bottom: 15px;
-  text-align: left;
-}
+/* --- Typography & Forms --- */
+h1 { font-size: 24px; font-weight: 700; margin: 0; color: var(--bring-black); }
+h2 { font-size: 20px; margin-bottom: 20px; font-weight: 600; }
+h3 { font-size: 16px; margin: 0 0 4px 0; }
+p { line-height: 1.5; color: #555; }
+.text-muted { font-size: 14px; color: #888; }
 
-label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
-  font-size: 0.9rem;
-  color: #555;
-}
+.form-group { margin-bottom: 20px; }
+label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
 
 input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 1rem;
-  box-sizing: border-box; /* Vigtigt så padding ikke ødelægger bredden */
+  padding: 12px 15px;
+  border: 1px solid var(--bring-gray-border);
+  border-radius: var(--radius);
+  font-size: 16px;
+  box-sizing: border-box; 
+}
+input:focus {
+  outline: none;
+  border-color: var(--bring-green);
+  box-shadow: 0 0 0 3px rgba(123, 193, 68, 0.2);
 }
 
+/* --- Buttons --- */
 button {
   width: 100%;
-  padding: 12px;
-  background-color: #00CB00; /* Posten Green */
-  color: white;
+  padding: 14px;
   border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: bold;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  margin-top: 10px;
+  transition: background-color 0.2s;
 }
 
-button:hover { background-color: #00A300; }
-button:disabled { background-color: #ccc; }
+.btn-primary { background-color: var(--bring-green); color: var(--white); }
+.btn-primary:hover { background-color: var(--bring-green-dark); }
+.btn-primary:disabled { background-color: #a0a0a0; cursor: not-allowed; }
 
-.error-msg {
-  color: red;
-  margin-top: 10px;
-  font-size: 0.9rem;
-}
+.btn-secondary { background-color: var(--bring-gray-light); color: var(--bring-black); }
+.btn-secondary:hover { background-color: #e0e0e0; }
 
-/* Item List Styling */
+.flex-gap { display: flex; gap: 15px; margin-top: 25px; }
+
+/* --- ITEM LIST & CHECKBOX FIX --- */
 .item-card {
-  background: white;
-  padding: 10px;
-  border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
-  text-align: left;
-  gap: 10px;
+  padding: 15px;
+  margin-bottom: 12px;
+  border: 1px solid var(--bring-gray-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  background-color: var(--white);
+  transition: all 0.2s ease-in-out;
 }
 
-.item-info { flex-grow: 1; }
-.item-info h3 { margin: 0; font-size: 1rem; }
-.item-info span { font-size: 0.8rem; color: #888; }
+.item-card:hover {
+  border-color: #aaa;
+}
 
-.secondary-btn {
-  background-color: #666;
-  margin-top: 20px;
+/* Når varen er valgt */
+.item-card.is-selected {
+  border-color: var(--bring-green) !important; /* Force green border */
+  background-color: #f9fff5 !important;        /* Force light green bg */
+}
+
+/* Checkbox Cirklen */
+.checkbox-visual {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--bring-gray-border);
+  margin-right: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: white;
+  flex-shrink: 0;
+  font-weight: bold;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+/* Når varen er valgt, farv cirklen grøn */
+.item-card.is-selected .checkbox-visual {
+  background-color: var(--bring-green);
+  border-color: var(--bring-green);
+}
+
+.product-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 15px;
+}
+
+.error-msg {
+  color: var(--error-red);
+  font-size: 14px;
+  margin-top: 10px;
+  background: #ffe6e6;
+  padding: 10px;
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.success-box {
+  background-color: #f7fbf3;
+  border: 1px dashed var(--bring-green);
+  padding: 20px;
+  margin: 20px 0;
+  font-family: monospace;
+  font-size: 1.2rem;
+  color: var(--bring-black);
 }

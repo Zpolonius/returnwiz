@@ -54,6 +54,12 @@ class CreateReturnRequest(BaseModel):
     email: str
     items: List[ReturnItemRequest]
 
+# --- NYT SCHEMA TIL WEBSHOPS ---
+class CreateTenantRequest(BaseModel):
+    name: str
+    email: str
+    # Vi kunne tilføje password her senere, men nu holder vi det simpelt
+
 # --- 2. MOCK SERVICE (Simulerer Shopify) ---
 def mock_shopify_lookup(order_number: str, email: str):
     """
@@ -164,10 +170,40 @@ def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
     
     db.commit()
 
-    print(f"Succes! Retursag {new_return.id} oprettet for {tenant.name}")
+    print(f"Succes! Retursag {new_return.id} oprettet for {tenant.shop_name}")
     return {
         "message": "Retursag oprettet succesfuldt",
         "return_id": str(new_return.id), # Konverter UUID til string for sikker JSON
         "tracking_number": new_return.tracking_number,
-        "tenant_used": tenant.name
+        "tenant_used": tenant.shop_name
+    }
+# --- NYT ENDPOINT: OPRET WEBSHOP ---
+@app.post("/tenants/register")
+def register_tenant(request: CreateTenantRequest, db: Session = Depends(get_db)):
+    # 1. Tjek om email allerede findes (Business Logic)
+    existing_tenant = db.query(models.Tenant).filter(models.Tenant.email == request.email).first()
+    if existing_tenant:
+        raise HTTPException(status_code=400, detail="En shop med denne email findes allerede.")
+
+    # 2. Opret ny tenant
+    new_tenant = models.Tenant(
+        shop_name=request.name,
+        email=request.email
+        # ID genereres automatisk af databasen/modellen
+    )
+    
+    try:
+        db.add(new_tenant)
+        db.commit()
+        db.refresh(new_tenant)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database fejl: {str(e)}")
+
+    print(f"Ny shop oprettet: {new_tenant.shop_name} ({new_tenant.id})")
+    
+    return {
+        "message": "Webshop oprettet succesfuldt!",
+        "tenant_id": str(new_tenant.id),
+        "name": new_tenant.shop_name
     }
