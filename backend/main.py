@@ -84,7 +84,7 @@ def search_order(request: OrderSearchRequest):
     
     if not order_data:
         # Hvis ordren ikke findes, smid en 404 fejl (Not Found)
-        raise HTTPException(status_code=404, detail="Ordren blev ikke fundet. Tjek nummer og email.")
+        raise HTTPException(status_code=404, detail="Ordren blev ikke fundet. Tjek ordrenummer og email.")
         
     return order_data
 
