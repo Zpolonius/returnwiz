@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from database import engine, get_db
 import models
+import uuid
 
 # Opret tabeller
 models.Base.metadata.create_all(bind=engine)
@@ -41,6 +42,18 @@ class OrderResponse(BaseModel):
     customer_email: str
     currency: str
     items: List[LineItemSchema]
+
+    #endpoint til at håndtere retur request
+    class ReturnItemRequest(BaseModel):
+    id: str         # Shopify Line Item ID
+    quantity: int
+    reason: str
+    product_name: str
+
+class CreateReturnRequest(BaseModel):
+    order_number: str
+    email: str
+    items: List[ReturnItemRequest]
 
 # --- 2. MOCK SERVICE (Simulerer Shopify) ---
 def mock_shopify_lookup(order_number: str, email: str):
@@ -101,3 +114,45 @@ def search_order(request: OrderSearchRequest):
 @app.get("/tenants")
 def read_tenants(db: Session = Depends(get_db)):
     return db.query(models.Tenant).all()
+
+#Endpointet der gemmer i databasen med retur
+@app.post("/returns")
+def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
+    print(f"Modtager returordre for {request.order_number}")
+
+    # A. Opret selve retursagen i DB
+    # (Vi bruger en tilfældig Tenant ID her, da vi ikke har login systemet på plads endnu)
+    # I produktion ville vi slå tenant op baseret på domænet.
+    dummy_tenant_id = uuid.uuid4() 
+    
+    new_return = models.ReturnOrder(
+        shopify_order_number=request.order_number,
+        customer_email=request.email,
+        # Vi faker et tracking nummer her, indtil vi kobler Bring på rigtigt
+        tracking_number=f"TEST-TRACK-{uuid.uuid4().hex[:8].upper()}",
+        label_url="https://www.bring.no/static/img/logo.png", # Placeholder
+        status="CREATED",
+        tenant_id=dummy_tenant_id 
+    )
+    db.add(new_return)
+    db.commit() # Nu har retursagen et ID (new_return.id)
+    db.refresh(new_return)
+
+    # B. Gem de valgte varer i DB
+    for item in request.items:
+        db_item = models.ReturnItem(
+            return_id=new_return.id,
+            shopify_line_item_id=item.id,
+            product_name=item.product_name,
+            quantity=item.quantity,
+            reason_code=item.reason
+        )
+        db.add(db_item)
+    
+    db.commit()
+
+    return {
+        "message": "Retursag oprettet",
+        "return_id": new_return.id,
+        "tracking_number": new_return.tracking_number
+    }
