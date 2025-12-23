@@ -16,7 +16,8 @@ app = FastAPI(title="ReturnWiz API")
 # Dette tillader React (port 5173) at kalde Python (port 8000)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Kun vores frontend må kalde
+    allow_origins=["*"],
+     # Kun vores frontend må kalde
     allow_credentials=True,
     allow_methods=["*"], # Tillad alle metoder (GET, POST osv.)
     allow_headers=["*"],
