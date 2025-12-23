@@ -1,3 +1,4 @@
+import uuid
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -5,7 +6,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from database import engine, get_db
 import models
-import uuid
+from uuid import UUID
 
 # Opret tabeller
 models.Base.metadata.create_all(bind=engine)
@@ -59,7 +60,26 @@ class CreateTenantRequest(BaseModel):
     name: str
     email: str
     # Vi kunne tilføje password her senere, men nu holder vi det simpelt
+# --- SCHEMAS TIL DASHBOARD (Læsning af data) ---
+class ReturnItemResponse(BaseModel):
+    product_name: str
+    quantity: int
+    reason_code: str
+    
+    class Config:
+        # Dette fortæller Pydantic, at den må læse data fra en SQLAlchemy model
+        from_attributes = True 
 
+class ReturnOrderResponse(BaseModel):
+    id: UUID
+    shopify_order_number: str
+    customer_email: str
+    tracking_number: Optional[str] = None
+    status: str
+    items: List[ReturnItemResponse]
+
+    class Config:
+        from_attributes = True
 # --- 2. MOCK SERVICE (Simulerer Shopify) ---
 def mock_shopify_lookup(order_number: str, email: str):
     """
@@ -207,3 +227,18 @@ def register_tenant(request: CreateTenantRequest, db: Session = Depends(get_db))
         "tenant_id": str(new_tenant.id),
         "name": new_tenant.shop_name
     }
+# --- NYT ENDPOINT: HENT RETURSAGER (DASHBOARD) ---
+@app.get("/returns", response_model=List[ReturnOrderResponse])
+def read_returns(shop_email: Optional[str] = None, db: Session = Depends(get_db)):
+    """
+    Henter alle retursager. 
+    Hvis 'shop_email' er angivet, filtrerer vi, så vi kun ser den shops ordrer.
+    """
+    query = db.query(models.ReturnOrder)
+    
+    if shop_email:
+        # Vi joiner med Tenant tabellen for at filtrere på ejerens email
+        query = query.join(models.Tenant).filter(models.Tenant.email == shop_email)
+    
+    results = query.all()
+    return results
