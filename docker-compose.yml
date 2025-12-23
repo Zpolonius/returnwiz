@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+
   # 1. Databasen
   db:
     image: postgres:15-alpine
