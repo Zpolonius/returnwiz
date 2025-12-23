@@ -1,24 +1,26 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
 
-# Vi henter URL'en fra Docker miljøet, eller bruger en fallback til lokal test
-SQLALCHEMY_DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "postgresql://user:password@localhost:5432/returnwiz"
+# 1. Vi bruger SQLite til lokal udvikling (det er bare en fil)
+SQLALCHEMY_DATABASE_URL = "sqlite:///./returnwiz.db"
+
+# HVIS du ville bruge PostgreSQL, ville det se sådan ud (men det kræver en server):
+# SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
+
+# 2. Opret Engine
+# "check_same_thread": False er nødvendigt KUN for SQLite
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
 
-# Opret "motoren"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
-# Opret en SessionLocal klasse. Hver gang vi skal tale med DB, laver vi en instans af denne.
+# 3. Opret SessionLocal (Det er den vi bruger til at tale med DB)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base klassen som alle vores modeller skal arve fra
+# 4. Base klasse til vores modeller
 Base = declarative_base()
 
-# Hjælpefunktion til at få en database session (bruges i API endpoints)
+# 5. Dependency injection (Hjælpefunktion til at hente DB session)
 def get_db():
     db = SessionLocal()
     try:

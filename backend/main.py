@@ -128,10 +128,9 @@ def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
         # Hvis databasen er tom (første kørsel), opretter vi en 'seed' tenant
         print("Ingen tenant fundet. Opretter 'Default Webshop'...")
         tenant = models.Tenant(
-            # Jeg antager disse felter findes i din model. Tilpas hvis nødvendigt.
+            
             name="Min Webshop", 
             email="shop@example.com"
-            # id bliver typisk genereret automatisk af DB eller i models.py
         )
         db.add(tenant)
         db.commit()
