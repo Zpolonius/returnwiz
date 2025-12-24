@@ -115,7 +115,7 @@ function App() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: view === 'MERCHANT' && merchantTab === 'DASHBOARD' ? '800px' : '520px' }}>
+    <div className="container" style={{ maxWidth: view === 'MERCHANT' ? '100%' : '520px', padding: view === 'MERCHANT' ? '0' : '20px' }}>
 
       {/* HEADER */}
       <header className="header">
