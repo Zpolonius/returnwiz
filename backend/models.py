@@ -16,9 +16,17 @@ class Tenant(Base):
     # Her gemmer vi tokens (I produktion skal disse krypteres!)
     access_token = Column(String, nullable=True) 
     
+    # Firma info
+    cvr_number = Column(String, nullable=True)
+
     # Bring Indstillinger
     bring_customer_number = Column(String, nullable=True)
     bring_api_key = Column(String, nullable=True)
+    bring_api_user = Column(String, nullable=True) # ID/User for API
+
+    # Branding
+    logo_url = Column(String, nullable=True)
+    banner_url = Column(String, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     

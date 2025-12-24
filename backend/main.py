@@ -58,9 +58,21 @@ class CreateReturnRequest(BaseModel):
 
 # --- NYT SCHEMA TIL WEBSHOPS ---
 class CreateTenantRequest(BaseModel):
-    name: str
+    name: str # Shop Name (display)
     email: str
-    # Vi kunne tilføje password her senere, men nu holder vi det simpelt
+    
+    cvr_number: Optional[str] = None
+    webshop_name: Optional[str] = None # Internal ID/Name if different
+    
+    shopify_url: Optional[str] = None
+    
+    bring_api_user: Optional[str] = None
+    bring_api_key: Optional[str] = None
+    bring_customer_id: Optional[str] = None
+    
+    logo_url: Optional[str] = None
+    banner_url: Optional[str] = None
+
 # --- SCHEMAS TIL DASHBOARD (Læsning af data) ---
 class ReturnItemResponse(BaseModel):
     product_name: str
@@ -209,7 +221,14 @@ def register_tenant(request: CreateTenantRequest, db: Session = Depends(get_db))
     # 2. Opret ny tenant
     new_tenant = models.Tenant(
         shop_name=request.name,
-        email=request.email
+        email=request.email,
+        cvr_number=request.cvr_number,
+        shopify_domain=request.shopify_url, # Using shopify_domain column for URL for now 
+        bring_api_user=request.bring_api_user,
+        bring_api_key=request.bring_api_key,
+        bring_customer_number=request.bring_customer_id,
+        logo_url=request.logo_url,
+        banner_url=request.banner_url
         # ID genereres automatisk af databasen/modellen
     )
     
@@ -219,6 +238,7 @@ def register_tenant(request: CreateTenantRequest, db: Session = Depends(get_db))
         db.refresh(new_tenant)
     except Exception as e:
         db.rollback()
+        print(f"Database fejl: {e}")
         raise HTTPException(status_code=500, detail=f"Database fejl: {str(e)}")
 
     print(f"Ny shop oprettet: {new_tenant.shop_name} ({new_tenant.id})")
