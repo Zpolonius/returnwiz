@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api } from '../services/api'; // Sørg for at stien passer til din mappestruktur
 
 interface OnboardingState {
     step: number;
@@ -26,8 +27,7 @@ interface OnboardingState {
     setStep: (step: number) => void;
     updateFormData: (data: Partial<OnboardingState['formData']>) => void;
     reset: () => void;
-    // Her er definitionen (den havde du korrekt)
-    registerCompany: () => Promise<void>; 
+    registerCompany: () => Promise<void>;
 }
 
 export const useOnboardingStore = create<OnboardingState>((set, get) => ({
@@ -46,7 +46,7 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         bannerFile: null,
         logoPreview: null,
         bannerPreview: null,
-        primaryColor: '#7bc144',  // Default Posten Bring grøn
+        primaryColor: '#7bc144',
     },
     setStep: (step) => set({ step }),
     
@@ -74,43 +74,37 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         }
     }),
 
-    // --- HER ER DEN MANGLENDE IMPLEMENTERING ---
+    // --- HER ER DEN RETTEDE IMPLEMENTERING ---
     registerCompany: async () => {
         const { formData, setStep } = get();
 
-        // 1. Validering: Tjek at nødvendige felter er udfyldt
+        // 1. Validering
         if (!formData.companyName || !formData.email || !formData.password) {
             throw new Error("Udfyld venligst virksomhedsnavn, email og password.");
         }
 
-        // 2. Data Mapping: Forbered payload til backend
-        // Vi sender KUN de felter, der er relevante for oprettelsen for at undgå 422 fejl
+        // 2. Data Mapping (Kritisk step!)
+        // Vi oversætter fra Store (camelCase) til API/Backend (snake_case)
         const payload = {
-            name: formData.companyName, // Backend forventer 'name', vi har 'companyName'
-            email: formData.email,
-            password: formData.password,
-            // Tilføj evt. cvrNumber hvis backenden understøtter det:
-            // cvr: formData.cvrNumber 
+            name: formData.companyName,         // API: 'name'
+            email: formData.email,              // API: 'email'
+            password: formData.password,        // API: 'password'
+            cvr_number: formData.cvrNumber,     // API: 'cvr_number' (vigtig rettelse)
+            webshop_name: formData.webshopName, // API: 'webshop_name'
+            // Du kan tilføje shopify_url her, hvis du vil gemme den allerede i step 1,
+            // ellers gemmes den først ved fuld submit i step 3.
         };
 
-        // 3. API Kald
-        // HUSK: Ret URL'en til din faktiske backend endpoint
-        const response = await fetch('http://localhost:8000/register', { 
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            // Vi kaster en fejl med beskeden fra backenden, så UI kan vise den
-            throw new Error(errorData.detail?.[0]?.msg || "Der skete en fejl ved oprettelse af bruger.");
+        try {
+            // 3. Kald API'et via din service
+            await api.registerTenant(payload);
+            
+            console.log("Tenant oprettet! Går til step 2.");
+            setStep(2);
+        } catch (error: any) {
+            console.error("Fejl i registerCompany:", error);
+            // Hvis det er en 404 her, betyder det at din backend IKKE kører på /tenants/register
+            throw new Error(error.message || "Kunne ikke oprette bruger");
         }
-
-        // 4. Success: Gå til næste step (Integration)
-        console.log("Bruger oprettet! Går til step 2.");
-        setStep(2);
     }
 }));
