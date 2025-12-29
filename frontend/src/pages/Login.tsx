@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';  
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -36,6 +37,13 @@ export default function Login() {
     <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
         <div>
+          <div className="flex justify-center mb-6">
+             <img
+             className="h-16 w-auto" // Lidt større logo på login siden (h-16)
+              src={logo} 
+             alt="Logo"
+               />
+              </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Log ind på ReturnWiz
           </h2>

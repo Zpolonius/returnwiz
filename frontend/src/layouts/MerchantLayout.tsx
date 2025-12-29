@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.png';
 
 export default function MerchantLayout() {
   const { user, logout } = useAuth();
@@ -24,8 +25,17 @@ export default function MerchantLayout() {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
+                <div className="flex-shrink-0 flex items-center">
+                <img 
+                  className="h-8 w-auto" 
+                  src={logo} 
+                  alt="Company Logo" 
+                />
+                
+                <span className="ml-3 text-xl font-bold text-gray-800">ReturnWiz</span>
+              </div>
                 <span className="text-xl font-bold text-gray-800">ReturnWiz</span>
-                <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">by Posten Bring</span>
+                
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 <Link to="/dashboard" className={`inline-flex items-center px-1 pt-1 text-sm font-medium ${isActive('/dashboard')}`}>
