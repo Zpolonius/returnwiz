@@ -1,197 +1,233 @@
-import { useState, useEffect } from 'react';
-import './App.css';
-import logo from './assets/logo.jpg';
+import { useState } from 'react';
 import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
+import { Store, Package, ArrowRight, CheckCircle2, Search, ShoppingBag } from 'lucide-react';
+import clsx from 'clsx';
+// Sørg for at stien passer til dit logo
+import logo from './assets/logo.jpg'; 
 
-// --- TYPES ---
-interface LineItem { id: string; product_name: string; variant_name: string; image_url: string; price: number; quantity: number; }
-interface OrderResponse { order_id: string; order_number: string; customer_email: string; items: LineItem[]; }
-interface SuccessResponse { message: string; return_id: string; tracking_number: string; tenant_used: string; }
-interface DashboardItem { product_name: string; quantity: number; reason_code: string; }
-interface DashboardOrder { id: string; shopify_order_number: string; customer_email: string; tracking_number: string; status: string; items: DashboardItem[]; }
+// --- TYPES (Beholdt fra din kode) ---
+interface DashboardOrder { id: string; shopify_order_number: string; customer_email: string; tracking_number: string; status: string; items: any[]; }
 
 // --- HELPER: DOMAIN DETECTION ---
 const getSubdomain = () => {
-  const hostname = window.location.hostname; // f.eks. "myshop.returnwiz.local"
+  const hostname = window.location.hostname;
   const parts = hostname.split('.');
-
-  // Hvis vi kører på localhost (uden punkter) eller "app" eller "www", er vi i ADMIN mode
-  if (parts.length === 1 || parts[0] === 'localhost' || parts[0] === 'app' || parts[0] === 'www' || parts[0] === 'returnwiz') {
-    return null; // Ingen shop-subdomæne = ADMIN
+  if (parts.length === 1 || ['localhost', 'app', 'www', 'returnwiz'].includes(parts[0])) {
+    return null;
   }
-
-  return parts[0]; // Returnerer "myshop"
+  return parts[0];
 };
 
 function App() {
-  // --- NAVIGATION STATE ---
-  // Vi bestemmer view baseret på subdomænet ved start
   const subdomain = getSubdomain();
-  const [view, setView] = useState<'CUSTOMER' | 'MERCHANT'>(subdomain ? 'CUSTOMER' : 'MERCHANT');
-
-  // --- MERCHANT STATE ---
+  // Hvis der er et subdomæne, er vi kunde. Ellers er vi Admin (Merchant).
+  const [view] = useState<'CUSTOMER' | 'MERCHANT'>(subdomain ? 'CUSTOMER' : 'MERCHANT');
   const [merchantTab, setMerchantTab] = useState<'REGISTER' | 'DASHBOARD'>('DASHBOARD');
-  const [shopName, setShopName] = useState('');
-  const [shopEmail, setShopEmail] = useState('');
-  const [shopSuccess, setShopSuccess] = useState('');
+  
+  // State placeholders
   const [loginEmail, setLoginEmail] = useState('');
-  const [dashboardData, setDashboardData] = useState<DashboardOrder[]>([]);
-
-  // --- CUSTOMER STATE ---
-  const [step, setStep] = useState<'SEARCH' | 'SELECT' | 'SUCCESS'>('SEARCH');
+  const [dashboardData] = useState<DashboardOrder[]>([]); 
+  
+  // Customer State
+  const [customerStep, setCustomerStep] = useState<'SEARCH' | 'SELECT' | 'SUCCESS'>('SEARCH');
   const [orderNumber, setOrderNumber] = useState('');
   const [email, setEmail] = useState('');
-  const [orderData, setOrderData] = useState<OrderResponse | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [successData, setSuccessData] = useState<SuccessResponse | null>(null);
 
-  // --- SHARED ---
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  // ---------------------------------------------------------------------------
+  // VIEW: MERCHANT (ADMIN DASHBOARD)
+  // ---------------------------------------------------------------------------
+  if (view === 'MERCHANT') {
+    return (
+      <div className="min-h-screen bg-gray-50 font-sans text-gray-900 flex flex-col">
+        {/* Admin Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Logo Vist Her */}
+              <img src={logo} alt="Logo" className="h-12 w-auto object-contain logo-img" />
+              <div className="h-8 w-px bg-gray-200 mx-2"></div>
+              <span className="font-semibold text-gray-500 tracking-wide uppercase text-sm">Merchant Portal</span>
+            </div>
+            
+            <nav className="flex gap-2 bg-gray-100 p-1 rounded-lg border border-gray-200">
+              <button 
+                onClick={() => setMerchantTab('DASHBOARD')}
+                className={clsx(
+                  "px-4 py-2 text-sm font-semibold rounded-md transition-all", 
+                  merchantTab === 'DASHBOARD' ? "bg-white text-brand-700 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                )}
+              >
+                Dashboard
+              </button>
+              <button 
+                onClick={() => setMerchantTab('REGISTER')}
+                className={clsx(
+                  "px-4 py-2 text-sm font-semibold rounded-md transition-all", 
+                  merchantTab === 'REGISTER' ? "bg-white text-brand-700 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                )}
+              >
+                Opsætning
+              </button>
+            </nav>
+          </div>
+        </header>
 
-  // Sørg for at API URL er dynamisk hvis nødvendigt, men her hardcoder vi backend port
-  const API_URL = 'http://127.0.0.1:8000';
-
-  // --- ACTIONS: MERCHANT ---
-  const handleRegisterShop = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setError(''); setShopSuccess('');
-    try {
-      const response = await fetch(`${API_URL}/tenants/register`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: shopName, email: shopEmail }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail);
-
-      // Vis linket til deres nye subdomæne
-      const newUrl = `http://${shopName.toLowerCase().replace(/\s+/g, '')}.returnwiz.local:5173`;
-      setShopSuccess(`Velkommen! Din returportal er klar på: ${newUrl}`);
-      setShopName(''); setShopEmail('');
-    } catch (err: any) { setError(err.message); } finally { setLoading(false); }
-  };
-
-  const handleFetchDashboard = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setError('');
-    try {
-      const response = await fetch(`${API_URL}/returns?shop_email=${loginEmail}`);
-      if (!response.ok) throw new Error('Ingen data fundet.');
-      const data = await response.json();
-      setDashboardData(data);
-    } catch (err: any) { setError(err.message); } finally { setLoading(false); }
+        {/* Admin Content */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {merchantTab === 'REGISTER' ? (
+            <div className="max-w-4xl mx-auto">
+               <OnboardingWizard />
+            </div>
+          ) : (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              {/* Login Card */}
+              <div className="bg-white rounded-xl border border-gray-200 p-10 shadow-sm max-w-md mx-auto text-center mt-12">
+                  <div className="w-16 h-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6 text-brand-600">
+                      <Store size={32} />
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">Admin Login</h2>
+                  <p className="text-gray-500 mb-8">Få adgang til dine retursager og indstillinger</p>
+                  
+                  <div className="space-y-4 text-left">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
+                        <input 
+                            type="email" 
+                            className="block w-full rounded-lg border-gray-300 px-4 py-3 focus:border-brand-500 focus:ring-brand-500 transition-shadow"
+                            placeholder="admin@webshop.dk"
+                            value={loginEmail}
+                            onChange={(e) => setLoginEmail(e.target.value)}
+                        />
+                      </div>
+                      <button className="w-full bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-lg font-bold transition-all shadow hover:shadow-lg transform hover:-translate-y-0.5">
+                          Log Ind
+                      </button>
+                  </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    );
   }
 
-  // --- ACTIONS: CUSTOMER ---
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setError('');
-    try {
-      const response = await fetch(`${API_URL}/returns/search`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_number: orderNumber, email: email }),
-      });
-      if (!response.ok) throw new Error('Ordre ikke fundet');
-      const data = await response.json();
-      setOrderData(data); setStep('SELECT');
-    } catch (err: any) { setError(err.message); } finally { setLoading(false); }
-  };
-
-  const toggleSelection = (id: string) => {
-    const newSelection = new Set(selectedIds);
-    if (newSelection.has(id)) newSelection.delete(id); else newSelection.add(id);
-    setSelectedIds(newSelection);
-  };
-
-  const handleSubmitReturn = async () => {
-    if (selectedIds.size === 0) return; setLoading(true);
-    const itemsToSend = orderData?.items.filter(i => selectedIds.has(i.id)).map(i => ({ id: i.id, product_name: i.product_name, quantity: 1, reason: 'NOT_SPECIFIED' }));
-    try {
-      const response = await fetch(`${API_URL}/returns`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_number: orderNumber, email: email, items: itemsToSend }),
-      });
-      if (!response.ok) throw new Error('Fejl');
-      const result = await response.json();
-      setSuccessData(result); setStep('SUCCESS');
-    } catch (err: any) { alert(err.message); } finally { setLoading(false); }
-  };
-
+  // ---------------------------------------------------------------------------
+  // VIEW: CUSTOMER (MOBILE FRIENDLY RETURN PORTAL)
+  // ---------------------------------------------------------------------------
   return (
-    <div className="container" style={{ maxWidth: view === 'MERCHANT' ? '100%' : '520px', padding: view === 'MERCHANT' ? '0' : '20px' }}>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+      
+      {/* Customer Brand Header */}
+      <div className="mb-8 text-center">
+        <img src={logo} alt="Shop Logo" className="h-16 w-auto mx-auto object-contain mb-4 rounded-lg shadow-sm bg-white p-2" />
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{subdomain} Returportal</h1>
+        <p className="mt-2 text-gray-600">Vi hjælper dig med at returnere dine varer</p>
+      </div>
 
-      {/* HEADER */}
-      <header className="header">
-        <img src={logo} alt="ReturnWiz Logo" className="logo" />
-        <h1>ReturnWiz</h1>
-        {/* Subdomain Indicator */}
-        {subdomain && <div style={{ color: 'var(--bring-green)', fontWeight: 'bold', marginTop: '5px' }}>{subdomain.toUpperCase()} PORTAL</div>}
-      </header>
-
-      {/* --- MERCHANT VIEW (ADMIN) --- */}
-      {view === 'MERCHANT' && (
-        <div className="card">
-          <div style={{ display: 'flex', borderBottom: '1px solid #eee', marginBottom: '20px' }}>
-            <div onClick={() => setMerchantTab('DASHBOARD')} style={{ padding: '10px 20px', cursor: 'pointer', borderBottom: merchantTab === 'DASHBOARD' ? '2px solid var(--bring-green)' : 'none', fontWeight: merchantTab === 'DASHBOARD' ? 'bold' : 'normal' }}>Dashboard</div>
-            <div onClick={() => setMerchantTab('REGISTER')} style={{ padding: '10px 20px', cursor: 'pointer', borderBottom: merchantTab === 'REGISTER' ? '2px solid var(--bring-green)' : 'none', fontWeight: merchantTab === 'REGISTER' ? 'bold' : 'normal' }}>Opret Shop</div>
-          </div>
-
-          {merchantTab === 'REGISTER' && (
-            <div className="py-8">
-              <OnboardingWizard />
-            </div>
-          )}
-
-          {merchantTab === 'DASHBOARD' && (
-            <div>
-              <form onSubmit={handleFetchDashboard} style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'flex-end' }}>
-                <div style={{ flex: 1 }}><label>Log ind med Email:</label><input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="admin@..." required /></div>
-                <button className="btn-primary" style={{ width: 'auto' }} disabled={loading}>Log Ind</button>
-              </form>
-              {dashboardData.length > 0 ? (
-                <table style={{ width: '100%', fontSize: '14px' }}>
-                  <thead><tr style={{ textAlign: 'left', color: '#888' }}><th>Ordre</th><th>Kunde</th><th>Status</th><th>Varer</th></tr></thead>
-                  <tbody>
-                    {dashboardData.map(order => (
-                      <tr key={order.id} style={{ borderTop: '1px solid #eee' }}><td style={{ padding: '10px' }}>{order.shopify_order_number}</td><td>{order.customer_email}</td><td>{order.status}</td><td>{order.items.length} stk</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <p className="text-muted" style={{ textAlign: 'center' }}>Ingen ordrer fundet / Ikke logget ind.</p>}
-            </div>
-          )}
-          {error && <div className="error-msg">{error}</div>}
+      {/* Main Card */}
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+        {/* Progress Bar (Visual only for now) */}
+        <div className="h-1.5 w-full bg-gray-100">
+            <div 
+                className="h-full bg-brand-500 transition-all duration-500" 
+                style={{ width: customerStep === 'SEARCH' ? '33%' : customerStep === 'SELECT' ? '66%' : '100%' }}
+            ></div>
         </div>
-      )}
 
-      {/* --- CUSTOMER VIEW (SUBDOMAIN) --- */}
-      {view === 'CUSTOMER' && (
-        <>
-          {step === 'SEARCH' && (
-            <div className="card">
-              <h2>Returnering</h2>
-              <p className="text-muted">Velkommen til <strong>{subdomain}</strong>s returportal.</p>
-              <form onSubmit={handleSearch}>
-                <div className="form-group"><label>Ordrenummer</label><input value={orderNumber} onChange={e => setOrderNumber(e.target.value)} placeholder="1001" required /></div>
-                <div className="form-group"><label>Email</label><input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required /></div>
-                <button className="btn-primary" disabled={loading}>{loading ? '...' : 'Start'}</button>
-              </form>
-            </div>
-          )}
-          {step === 'SELECT' && orderData && (
-            <div className="card">
-              <h2>Vælg varer</h2>
-              <div className="item-list">{orderData.items.map(item => (<div key={item.id} className={`item-card ${selectedIds.has(item.id) ? 'is-selected' : ''}`} onClick={() => toggleSelection(item.id)}><div className="checkbox-visual">{selectedIds.has(item.id) && '✓'}</div><img src={item.image_url} className="product-thumb" /><div><h3>{item.product_name}</h3><div className="text-muted">{item.variant_name}</div></div></div>))}</div>
-              <div className="flex-gap"><button className="btn-secondary" onClick={() => setStep('SEARCH')}>Tilbage</button><button className="btn-primary" onClick={handleSubmitReturn} disabled={loading || selectedIds.size === 0}>Godkend Retur</button></div>
-            </div>
-          )}
-          {step === 'SUCCESS' && successData && (
-            <div className="card" style={{ textAlign: 'center' }}>
-              <h2 style={{ color: 'var(--bring-green)' }}>Tak!</h2>
-              <div className="success-box">{successData.tracking_number}</div>
-              <button className="btn-primary" onClick={() => window.location.reload()}>Ny retur</button>
-            </div>
-          )}
-          {error && <div className="error-msg">{error}</div>}
-        </>
-      )}
+        <div className="p-8">
+            {customerStep === 'SEARCH' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="text-center mb-6">
+                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand-50 text-brand-600 mb-4">
+                            <Search size={24} />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900">Find din ordre</h2>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Ordrenummer</label>
+                            <input 
+                                className="block w-full rounded-lg border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:ring-brand-500 shadow-sm"
+                                placeholder="#1001"
+                                value={orderNumber}
+                                onChange={(e) => setOrderNumber(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5">Email adresse</label>
+                            <input 
+                                type="email"
+                                className="block w-full rounded-lg border-gray-300 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-brand-500 focus:ring-brand-500 shadow-sm"
+                                placeholder="din@email.dk"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <button 
+                        onClick={() => setCustomerStep('SELECT')}
+                        className="w-full flex items-center justify-center px-8 py-3.5 border border-transparent text-base font-bold rounded-lg text-white bg-brand-600 hover:bg-brand-700 md:text-lg transition-all shadow-md hover:shadow-lg mt-6"
+                    >
+                        Find Ordre <ArrowRight className="ml-2 -mr-1 h-5 w-5" />
+                    </button>
+                </div>
+            )}
+
+            {customerStep === 'SELECT' && (
+                <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+                    <div className="flex items-center mb-6">
+                        <button onClick={() => setCustomerStep('SEARCH')} className="text-sm text-gray-500 hover:text-gray-900 font-medium">← Tilbage</button>
+                        <h2 className="text-xl font-bold text-gray-900 ml-auto">Vælg Varer</h2>
+                    </div>
+                    
+                    <div className="border rounded-xl p-4 mb-4 flex gap-4 bg-gray-50 border-gray-200">
+                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">
+                            <ShoppingBag size={24} />
+                        </div>
+                        <div>
+                            <p className="font-bold text-gray-900">Cool T-Shirt</p>
+                            <p className="text-sm text-gray-500">Size: L • Black</p>
+                            <p className="text-sm font-medium text-gray-900 mt-1">299,00 DKK</p>
+                        </div>
+                        <input type="checkbox" className="ml-auto w-6 h-6 text-brand-600 rounded border-gray-300 focus:ring-brand-500" />
+                    </div>
+
+                    <button 
+                         onClick={() => setCustomerStep('SUCCESS')}
+                         className="w-full mt-6 bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 rounded-lg shadow-md"
+                    >
+                        Returnér Valgte
+                    </button>
+                </div>
+            )}
+            
+            {customerStep === 'SUCCESS' && (
+                <div className="text-center py-6 animate-in zoom-in-95 duration-500">
+                    <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle2 className="w-10 h-10 text-green-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Tak for din retur!</h2>
+                    <p className="text-gray-600 mb-6">Vi har sendt en returlabel til din email.</p>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-8">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Tracking Nummer</p>
+                        <p className="font-mono text-lg font-bold text-gray-900">XX 123 456 789 DK</p>
+                    </div>
+                    <button onClick={() => window.location.reload()} className="text-brand-600 font-bold hover:underline">
+                        Start ny retur
+                    </button>
+                </div>
+            )}
+        </div>
+        
+        {/* Footer */}
+        <div className="bg-gray-50 px-8 py-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
+                <Package size={12} /> Powered by Posten Bring & ReturnWiz
+            </p>
+        </div>
+      </div>
     </div>
   );
 }

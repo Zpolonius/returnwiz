@@ -1,5 +1,5 @@
 import { useOnboardingStore } from '../../store/onboardingStore';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Upload, Image as ImageIcon } from 'lucide-react';
 import { useCallback } from 'react';
 
 export const StepBranding = () => {
@@ -22,78 +22,66 @@ export const StepBranding = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900">Branding</h2>
-                <p className="mt-2 text-gray-500">Personalize your return portal to match your brand.</p>
+            <div className="border-b border-ui-100 pb-4">
+                <h2 className="text-lg font-semibold text-ui-800">Branding</h2>
+                <p className="mt-1 text-sm text-gray-500">Tilpas returportalen så den matcher dit brand.</p>
             </div>
 
-            <div className="space-y-8">
+            <div className="space-y-6">
                 {/* Logo Upload */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <label className="block text-sm font-semibold text-gray-900 mb-4">Logo Upload</label>
-                    <div className="flex items-start gap-6">
-                        <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center group hover:border-brand-400 transition-colors">
-                            {formData.logoPreview ? (
-                                <img src={formData.logoPreview} alt="Logo" className="h-full w-full object-contain p-2" />
-                            ) : (
-                                <ImageIcon className="text-gray-400 group-hover:text-brand-500 transition-colors" size={24} />
-                            )}
-                        </div>
-                        <div className="flex-1 space-y-3">
-                            <p className="text-sm text-gray-500">Upload your store logo. It will be displayed at the top of your return portal.</p>
-                            <div>
-                                <input
-                                    type="file"
-                                    id="logo-upload"
-                                    className="hidden"
-                                    accept="image/*"
-                                    onChange={(e) => handleFileChange('logo', e)}
-                                />
-                                <label
-                                    htmlFor="logo-upload"
-                                    className="inline-flex cursor-pointer items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all"
-                                >
-                                    <Upload size={16} className="mr-2 text-gray-500" /> Choose File
-                                </label>
-                                <span className="ml-3 text-xs text-gray-400">Recommended: 200x200px PNG</span>
-                            </div>
-                        </div>
-                    </div>
+                <div className="bg-white rounded-lg border border-ui-200 p-6 flex flex-col sm:flex-row gap-6 items-start">
+                     <div className="w-32 h-32 flex-shrink-0 bg-gray-50 border-2 border-dashed border-ui-200 rounded-lg flex items-center justify-center overflow-hidden">
+                        {formData.logoPreview ? (
+                            <img src={formData.logoPreview} alt="Logo" className="w-full h-full object-contain p-2" />
+                        ) : (
+                            <span className="text-xs text-gray-400 text-center px-2">Ingen Logo</span>
+                        )}
+                     </div>
+                     <div className="flex-1">
+                        <label className="block text-sm font-bold text-ui-800 mb-2">Webshop Logo</label>
+                        <p className="text-sm text-gray-500 mb-4">Dette logo vises øverst i venstre hjørne på din portal.</p>
+                        
+                        <input
+                            type="file"
+                            id="logo-upload"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={(e) => handleFileChange('logo', e)}
+                        />
+                        <label
+                            htmlFor="logo-upload"
+                            className="inline-flex cursor-pointer items-center px-4 py-2 bg-white border border-ui-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-brand-500 transition-all shadow-sm"
+                        >
+                            <Upload size={16} className="mr-2" /> Vælg fil...
+                        </label>
+                     </div>
                 </div>
 
                 {/* Banner Upload */}
-                <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
-                    <label className="block text-sm font-semibold text-gray-900 mb-4">Banner Image</label>
-                    <div className="relative h-40 w-full overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center group hover:border-brand-400 transition-colors">
+                <div className="bg-white rounded-lg border border-ui-200 p-6">
+                    <label className="block text-sm font-bold text-ui-800 mb-4">Top Banner</label>
+                    
+                    <div className="relative w-full h-48 bg-gray-50 border-2 border-dashed border-ui-200 rounded-lg flex flex-col items-center justify-center group hover:border-brand-400 transition-colors overflow-hidden">
                         {formData.bannerPreview ? (
-                            <div className="relative w-full h-full">
-                                <img src={formData.bannerPreview} alt="Banner" className="h-full w-full object-cover" />
-                                <div className="absolute inset-0 bg-black/10"></div>
-                            </div>
+                            <>
+                                <img src={formData.bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <p className="text-white font-medium">Klik for at ændre</p>
+                                </div>
+                            </>
                         ) : (
-                            <div className="text-center">
-                                <ImageIcon className="mx-auto h-10 w-10 text-gray-400 group-hover:text-brand-500 transition-colors" />
-                                <p className="mt-2 text-xs text-gray-400">No banner uploaded</p>
+                            <div className="text-center p-4">
+                                <ImageIcon className="mx-auto h-10 w-10 text-gray-300 mb-2" />
+                                <p className="text-sm text-gray-500">Klik eller træk et billede herind</p>
+                                <p className="text-xs text-gray-400 mt-1">Anbefalet: 1200x400px</p>
                             </div>
                         )}
-                    </div>
-                    <div className="mt-4 flex items-center justify-between">
-                        <span className="text-xs text-gray-400">Optimal size: 1200x400px JPG/PNG</span>
-                        <div>
-                            <input
-                                type="file"
-                                id="banner-upload"
-                                className="hidden"
-                                accept="image/*"
-                                onChange={(e) => handleFileChange('banner', e)}
-                            />
-                            <label
-                                htmlFor="banner-upload"
-                                className="inline-flex cursor-pointer items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all"
-                            >
-                                <Upload size={16} className="mr-2 text-gray-500" /> Upload Banner
-                            </label>
-                        </div>
+                        <input
+                            type="file"
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            accept="image/*"
+                            onChange={(e) => handleFileChange('banner', e)}
+                        />
                     </div>
                 </div>
             </div>
