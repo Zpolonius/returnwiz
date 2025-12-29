@@ -224,7 +224,7 @@ function App() {
         {/* Footer */}
         <div className="bg-gray-50 px-8 py-4 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-400 flex items-center justify-center gap-1">
-                <Package size={12} /> Powered by Posten Bring & ReturnWiz
+                <Package size={12} /> Powered by  & ReturnWiz
             </p>
         </div>
       </div>
