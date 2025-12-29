@@ -1,29 +1,77 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useOnboardingStore } from '../../store/onboardingStore';
 import clsx from 'clsx';
 
-// Hvis du vil bruge ikonerne, skal de importeres (f.eks. fra lucide-react)
-// import { Mail, Lock, FileText } from 'lucide-react'; 
-
-// Hjælpekomponent til labels for visuel konsistens
+// Hjælpekomponent til labels
 const Label = ({ children }: { children: React.ReactNode }) => (
     <label className="block text-sm font-bold text-ui-800 mb-1.5">
         {children}
     </label>
 );
 
-// Hjælpekomponent til input styling - Centraliseret styling for nem vedligeholdelse
+// Hjælpekomponent til input styling
 const inputClasses = "block w-full rounded border-ui-200 bg-white px-4 py-3 text-ui-800 placeholder-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 sm:text-sm transition-colors shadow-sm";
 
 export const StepCompany = () => {
-    // Vi henter state og updater funktion fra storen
-    const { formData, updateFormData } = useOnboardingStore();
+    // Vi henter state, updater og setStep funktion fra storen
+    const { formData, updateFormData, setStep } = useOnboardingStore();
+    
+    // Lokal state til at håndtere loading status (god UX)
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // En lille hjælper for at undgå gentagelser i onChange (DRY - Don't Repeat Yourself)
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        // Vi caster name til keyof formData for typesikkerhed, hvis nødvendigt
         updateFormData({ [name]: value });
+        // Nulstil fejlbesked når brugeren skriver
+        if (error) setError(null);
+    };
+
+    const handleNext = async () => {
+        // 1. Simpel validering før vi kalder API
+        if (!formData.companyName || !formData.email || !formData.password) {
+            setError("Udfyld venligst alle obligatoriske felter.");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+
+        // 2. DATA MAPPING (Her løser vi 422 fejlen)
+        // Vi oversætter fra vores store format til backendens forventede format
+        const payload = {
+            name: formData.companyName, // Backend: 'name' <-> Frontend: 'companyName'
+            email: formData.email,
+            password: formData.password,
+            // Vi sender IKKE tomme felter fra step 2/3 her
+        };
+
+        try {
+            // HUSK AT RETTE URL'en til dit faktiske endpoint
+            // F.eks. 'http://localhost:8000/api/register' eller lignende
+            const response = await fetch('DIN_BACKEND_URL/register', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json', // Kritisk header
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error("Backend Error:", errorData);
+                throw new Error(errorData.detail?.[0]?.msg || "Kunne ikke oprette bruger");
+            }
+
+            // 3. Success! Gå til næste step
+            console.log("Bruger oprettet succesfuldt");
+            setStep(2);
+
+        } catch (err: any) {
+            setError(err.message || "Der skete en teknisk fejl.");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -32,6 +80,13 @@ export const StepCompany = () => {
                 <h2 className="text-lg font-semibold text-ui-800">Virksomhedsoplysninger</h2>
                 <p className="mt-1 text-sm text-gray-500">Udfyld de grundlæggende oplysninger om din virksomhed for at komme i gang.</p>
             </div>
+
+            {/* Vis fejlbesked hvis den findes */}
+            {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm border border-red-200">
+                    {error}
+                </div>
+            )}
 
             <div className="space-y-6 max-w-2xl">
                 
@@ -71,7 +126,7 @@ export const StepCompany = () => {
                             <input
                                 type="text"
                                 name="webshopName"
-                                className={clsx(inputClasses, "pr-32")} // plads til suffix
+                                className={clsx(inputClasses, "pr-32")}
                                 placeholder="min-shop"
                                 value={formData.webshopName}
                                 onChange={handleChange}
@@ -83,7 +138,7 @@ export const StepCompany = () => {
                     </div>
                 </div>
 
-                {/* Email og Password sektion */}
+                {/* Email og Password */}
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
                         <Label>Email (Login)</Label>
@@ -109,6 +164,9 @@ export const StepCompany = () => {
                         />
                     </div>
                 </div>
+
+               
+
             </div>
         </div>
     );
