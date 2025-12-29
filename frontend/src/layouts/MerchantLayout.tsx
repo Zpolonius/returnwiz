@@ -103,7 +103,7 @@ export function MerchantLayout() {
                <OnboardingWizard />
           </div>
         ) : (
-          // HER ER DEN VIGTIGE ÆNDRING:
+          
           // Hvis vi IKKE er logget ind, vis Login Box. Ellers vis Dashboard.
           !isAuthenticated ? (
             <div className="bg-white rounded-xl border border-gray-200 p-10 shadow-sm max-w-md mx-auto text-center mt-12 animate-in fade-in zoom-in-95 duration-300">

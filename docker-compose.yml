@@ -14,6 +14,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d returnwiz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # 2. Backenden (API)
   backend:
@@ -25,7 +30,10 @@ services:
     volumes:
       - ./backend:/app # Dette gør at koden opdateres live når du gemmer
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      
+
 
   # 3. Frontenden (React)
   frontend:
