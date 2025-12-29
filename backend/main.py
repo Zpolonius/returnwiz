@@ -7,7 +7,15 @@ from typing import List, Optional
 from database import engine, get_db
 import models
 from uuid import UUID
+from passlib.context import CryptContext
 
+# Opsætning af password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
 # Opret tabeller
 models.Base.metadata.create_all(bind=engine)
 
@@ -60,6 +68,7 @@ class CreateReturnRequest(BaseModel):
 class CreateTenantRequest(BaseModel):
     name: str # Shop Name (display)
     email: str
+    password: str
     
     cvr_number: Optional[str] = None
     webshop_name: Optional[str] = None # Internal ID/Name if different
@@ -72,6 +81,9 @@ class CreateTenantRequest(BaseModel):
     
     logo_url: Optional[str] = None
     banner_url: Optional[str] = None
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 # --- SCHEMAS TIL DASHBOARD (Læsning af data) ---
 class ReturnItemResponse(BaseModel):
@@ -210,44 +222,6 @@ def create_return(request: CreateReturnRequest, db: Session = Depends(get_db)):
         "tracking_number": new_return.tracking_number,
         "tenant_used": tenant.shop_name
     }
-# --- NYT ENDPOINT: OPRET WEBSHOP ---
-@app.post("/tenants/register")
-def register_tenant(request: CreateTenantRequest, db: Session = Depends(get_db)):
-    # 1. Tjek om email allerede findes (Business Logic)
-    existing_tenant = db.query(models.Tenant).filter(models.Tenant.email == request.email).first()
-    if existing_tenant:
-        raise HTTPException(status_code=400, detail="En shop med denne email findes allerede.")
-
-    # 2. Opret ny tenant
-    new_tenant = models.Tenant(
-        shop_name=request.name,
-        email=request.email,
-        cvr_number=request.cvr_number,
-        shopify_domain=request.shopify_url, # Using shopify_domain column for URL for now 
-        bring_api_user=request.bring_api_user,
-        bring_api_key=request.bring_api_key,
-        bring_customer_number=request.bring_customer_id,
-        logo_url=request.logo_url,
-        banner_url=request.banner_url
-        # ID genereres automatisk af databasen/modellen
-    )
-    
-    try:
-        db.add(new_tenant)
-        db.commit()
-        db.refresh(new_tenant)
-    except Exception as e:
-        db.rollback()
-        print(f"Database fejl: {e}")
-        raise HTTPException(status_code=500, detail=f"Database fejl: {str(e)}")
-
-    print(f"Ny shop oprettet: {new_tenant.shop_name} ({new_tenant.id})")
-    
-    return {
-        "message": "Webshop oprettet succesfuldt!",
-        "tenant_id": str(new_tenant.id),
-        "name": new_tenant.shop_name
-    }
 # --- NYT ENDPOINT: HENT RETURSAGER (DASHBOARD) ---
 @app.get("/returns", response_model=List[ReturnOrderResponse])
 def read_returns(shop_email: Optional[str] = None, db: Session = Depends(get_db)):
@@ -263,3 +237,60 @@ def read_returns(shop_email: Optional[str] = None, db: Session = Depends(get_db)
     
     results = query.all()
     return results
+
+@app.post("/tenants/register")
+def register_tenant(request: CreateTenantRequest, db: Session = Depends(get_db)):
+    # 1. Tjek om email allerede findes
+    existing_tenant = db.query(models.Tenant).filter(models.Tenant.email == request.email).first()
+    if existing_tenant:
+        raise HTTPException(status_code=400, detail="En shop med denne email findes allerede.")
+
+    # 2. Hash passwordet
+    hashed_pwd = get_password_hash(request.password)
+
+    # 3. Opret ny tenant
+    new_tenant = models.Tenant(
+        shop_name=request.name,
+        email=request.email,
+        password_hash=hashed_pwd, # <-- Gemmer hash
+        cvr_number=request.cvr_number,
+        shopify_domain=request.shopify_url,
+        bring_api_user=request.bring_api_user,
+        bring_api_key=request.bring_api_key,
+        bring_customer_number=request.bring_customer_id,
+        logo_url=request.logo_url,
+        banner_url=request.banner_url
+    )
+    
+    try:
+        db.add(new_tenant)
+        db.commit()
+        db.refresh(new_tenant)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database fejl: {str(e)}")
+
+    return {
+        "message": "Webshop oprettet succesfuldt!",
+        "tenant_id": str(new_tenant.id),
+        "name": new_tenant.shop_name
+    }
+# --- NYT LOGIN ENDPOINT ---
+@app.post("/login")
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.email == request.email).first()
+    
+    if not tenant:
+        raise HTTPException(status_code=400, detail="Forkert email eller password")
+    
+    if not verify_password(request.password, tenant.password_hash):
+         raise HTTPException(status_code=400, detail="Forkert email eller password")
+
+    # I en rigtig app ville vi returnere en JWT token her.
+    # For nu returnerer vi tenant info, som frontend kan gemme i state.
+    return {
+        "message": "Login succesfuldt",
+        "tenant_id": str(tenant.id),
+        "name": tenant.shop_name,
+        "email": tenant.email
+    }

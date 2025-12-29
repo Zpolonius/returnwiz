@@ -54,6 +54,27 @@ export interface ReturnOrderListResponse {
         reason_code: string;
     }[];
 }
+// --- NYE TYPER TIL AUTHENTICERING --- 
+export interface CreateTenantRequest {
+    name: string;
+    email: string;
+    password: string; // <-- NYT
+    cvr_number?: string;
+    webshop_name?: string;
+    shopify_url?: string;
+    bring_api_user?: string;
+    bring_api_key?: string;
+    bring_customer_id?: string;
+    logo_url?: string;
+    banner_url?: string;
+}
+
+export interface LoginResponse {
+    message: string;
+    tenant_id: string;
+    name: string;
+    email: string;
+}
 
 // --- API SERVICE ---
 
@@ -73,6 +94,7 @@ export const api = {
     }
     return response.json();
   },
+  
 
   /**
    * Opretter retursagen og får tracking nummer tilbage
@@ -99,5 +121,31 @@ export const api = {
       throw new Error('Kunne ikke hente retursager');
     }
     return response.json();
-  }
+    
+  },
+  async registerTenant(payload: CreateTenantRequest): Promise<any> {
+        const response = await fetch(`${API_BASE_URL}/tenants/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Fejl ved oprettelse');
+        }
+        return response.json();
+    },
+
+    async login(email: string, password: string): Promise<LoginResponse> {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        if (!response.ok) {
+            throw new Error('Forkert email eller password');
+        }
+        return response.json();
+
+}
 };

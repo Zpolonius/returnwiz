@@ -10,19 +10,19 @@ class Tenant(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True, nullable=False)
+    # NYT: Vi gemmer aldrig passwordet i klar tekst!
+    password_hash = Column(String, nullable=False) 
+    
     shopify_domain = Column(String, unique=True, index=True, nullable=True)
     shop_name = Column(String)
     
-    # Her gemmer vi tokens (I produktion skal disse krypteres!)
     access_token = Column(String, nullable=True) 
-    
-    # Firma info
     cvr_number = Column(String, nullable=True)
 
     # Bring Indstillinger
     bring_customer_number = Column(String, nullable=True)
     bring_api_key = Column(String, nullable=True)
-    bring_api_user = Column(String, nullable=True) # ID/User for API
+    bring_api_user = Column(String, nullable=True)
 
     # Branding
     logo_url = Column(String, nullable=True)
@@ -30,7 +30,6 @@ class Tenant(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relation til retursager
     returns = relationship("ReturnOrder", back_populates="tenant")
 
 class ReturnOrder(Base):

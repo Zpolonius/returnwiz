@@ -7,6 +7,8 @@ interface OnboardingState {
         companyName: string;
         cvrNumber: string;
         webshopName: string;
+        email: string;
+        password: string;
 
         // Step 2: Integration
         shopifyUrl: string;
@@ -19,6 +21,7 @@ interface OnboardingState {
         bannerFile: File | null;
         logoPreview: string | null;
         bannerPreview: string | null;
+        primaryColor: string;
     };
     setStep: (step: number) => void;
     updateFormData: (data: Partial<OnboardingState['formData']>) => void;
@@ -31,6 +34,8 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
         companyName: '',
         cvrNumber: '',
         webshopName: '',
+        email: '',
+        password: '',
         shopifyUrl: '',
         bringApiUser: '',
         bringApiKey: '',
@@ -39,6 +44,7 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
         bannerFile: null,
         logoPreview: null,
         bannerPreview: null,
+        primaryColor: '#7bc144',  // Default grøn farve
     },
     setStep: (step) => set({ step }),
     updateFormData: (data) => set((state) => ({
@@ -58,6 +64,8 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
             bannerFile: null,
             logoPreview: null,
             bannerPreview: null,
+            email: '',
+            primaryColor: ''
         }
     })
 }));

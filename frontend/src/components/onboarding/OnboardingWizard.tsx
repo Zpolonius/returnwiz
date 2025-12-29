@@ -1,146 +1,123 @@
 import { useState } from 'react';
-import { useOnboardingStore } from '../../store/onboardingStore';
 import { StepCompany } from './StepCompany';
-import { StepIntegration } from './StepIntegration';
 import { StepBranding } from './StepBranding';
-import { Check, ChevronRight, Loader2 } from 'lucide-react';
+import { StepIntegration } from './StepIntegration';
+import { useOnboardingStore } from '../../store/onboardingStore';
+import { api } from '../../services/api'; // Import API
+import { ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
-const STEPS = [
-    { id: 1, name: 'Company Details' },
-    { id: 2, name: 'Integration' },
-    { id: 3, name: 'Branding' },
-];
+export function OnboardingWizard() {
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  
+  const store = useOnboardingStore();
 
-export const OnboardingWizard = () => {
-    const { step, setStep, formData } = useOnboardingStore();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [complete, setComplete] = useState(false);
-    const [error, setError] = useState('');
+  const handleNext = () => setStep(s => Math.min(s + 1, 3));
+  const handlePrev = () => setStep(s => Math.max(s - 1, 1));
 
-    const handleNext = () => setStep(step + 1);
-    const handleBack = () => setStep(step - 1);
-
-    const handleSubmit = async () => {
-        setIsSubmitting(true);
-        setError('');
-        try {
-            // ... (din eksisterende logik her) ...
-            // Mocking success for UI demo
-             await new Promise(resolve => setTimeout(resolve, 1500));
-            setComplete(true);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    if (complete) {
-        return (
-            <div className="min-h-[600px] flex items-center justify-center p-4">
-                <div className="bg-white rounded-lg shadow-card p-12 text-center max-w-lg w-full border border-ui-200">
-                    <div className="w-20 h-20 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Check className="w-10 h-10 text-brand-700" />
-                    </div>
-                    <h2 className="text-3xl font-bold text-ui-800 mb-4">All Set!</h2>
-                    <p className="text-gray-600 mb-8 text-lg">
-                        Your webshop <span className="font-semibold text-ui-800">{formData.companyName}</span> has been created.
-                    </p>
-                    <a href="#" className="block w-full py-3 px-6 text-base font-medium rounded text-white bg-brand-500 hover:bg-brand-600 transition-colors shadow-sm">
-                        Go to My Portal
-                    </a>
-                </div>
-            </div>
-        )
+  const handleFinish = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+        await api.registerTenant({
+            name: store.companyName,
+            email: store.email,
+            password: store.password, // Send password med
+            cvr_number: store.cvr,
+            shopify_url: store.shopifyUrl,
+            logo_url: store.logoUrl,
+            // ... map resten af felterne fra store
+        });
+        setSuccess(true);
+    } catch (err: any) {
+        setError(err.message || "Der skete en fejl ved oprettelsen.");
+    } finally {
+        setIsSubmitting(false);
     }
+  };
 
-    return (
-        <div className="w-full max-w-4xl mx-auto px-4 py-12">
-            {/* Bring Style Progress Header */}
-            <div className="mb-10">
-                <nav aria-label="Progress">
-                    <ol role="list" className="flex items-center justify-center w-full">
-                        {STEPS.map((s, stepIdx) => {
-                            const isCompleted = step > s.id;
-                            const isCurrent = step === s.id;
-                            return (
-                                <li key={s.name} className={clsx("relative flex-1 flex flex-col items-center")}>
-                                    {stepIdx !== STEPS.length - 1 && (
-                                        <div className="absolute top-4 left-[50%] right-[-50%] h-[2px] bg-ui-200" aria-hidden="true">
-                                            <div className={clsx("h-full transition-all duration-300 ease-out bg-brand-500", isCompleted ? "w-full" : "w-0")} />
-                                        </div>
-                                    )}
-                                    <div className="group relative flex flex-col items-center z-10">
-                                        <span className={clsx(
-                                            "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 border-2 font-bold text-sm",
-                                            isCompleted ? "bg-brand-500 border-brand-500 text-white" : 
-                                            isCurrent ? "bg-white border-brand-500 text-brand-700 ring-4 ring-brand-50" : 
-                                            "bg-white border-ui-200 text-gray-400"
-                                        )}>
-                                            {isCompleted ? <Check className="h-5 w-5" /> : s.id}
-                                        </span>
-                                        <span className={clsx(
-                                            "mt-2 text-xs font-semibold uppercase tracking-wider transition-colors duration-200 text-center",
-                                            isCurrent ? "text-brand-700" : "text-gray-400"
-                                        )}>{s.name}</span>
-                                    </div>
-                                </li>
-                            )
-                        })}
-                    </ol>
-                </nav>
-            </div>
+  if (success) {
+      return (
+          <div className="text-center py-12 animate-in zoom-in-95">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600">
+                  <Check size={40} />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Din konto er oprettet!</h2>
+              <p className="text-gray-500 mb-8">Du kan nu logge ind og se dit dashboard.</p>
+              <button 
+                onClick={() => window.location.reload()} // Simpel måde at komme til login
+                className="bg-brand-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-brand-700"
+              >
+                  Gå til Login
+              </button>
+          </div>
+      );
+  }
 
-            {/* Main Card - Clean Enterprise Look */}
-            <div className="bg-white rounded-lg shadow-card border border-ui-200 flex flex-col min-h-[500px]">
-                {/* Header Section */}
-                <div className="px-8 py-6 border-b border-ui-100 bg-ui-50 rounded-t-lg">
-                    <h1 className="text-xl font-bold text-ui-800">
-                        {STEPS[step-1].name}
-                    </h1>
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Progress Header */}
+      <div className="bg-gray-50 px-8 py-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+            {[1, 2, 3].map((s) => (
+                <div key={s} className="flex items-center">
+                    <div className={clsx(
+                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors",
+                        step >= s ? "bg-brand-600 text-white" : "bg-gray-200 text-gray-500"
+                    )}>
+                        {s}
+                    </div>
+                    <span className={clsx("ml-2 text-sm font-medium", step >= s ? "text-gray-900" : "text-gray-400")}>
+                        {s === 1 ? 'Firma' : s === 2 ? 'Design' : 'Integration'}
+                    </span>
+                    {s < 3 && <div className="w-12 h-px bg-gray-300 mx-4" />}
                 </div>
-
-                <div className="flex-1 p-8 md:p-10">
-                    {step === 1 && <StepCompany />}
-                    {step === 2 && <StepIntegration />}
-                    {step === 3 && <StepBranding />}
-
-                    {error && (
-                        <div className="mt-6 p-4 bg-red-50 text-red-800 text-sm rounded border border-red-100 flex items-center">
-                            <span className="mr-2 font-bold">Fejl:</span> {error}
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer / Actions */}
-                <div className="px-8 py-6 bg-white border-t border-ui-100 flex justify-between items-center rounded-b-lg">
-                    <button
-                        onClick={handleBack}
-                        disabled={step === 1 || isSubmitting}
-                        className="px-6 py-2.5 text-sm font-medium text-gray-600 hover:text-ui-800 hover:bg-ui-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                    >
-                        Tilbage
-                    </button>
-
-                    {step < 3 ? (
-                        <button
-                            onClick={handleNext}
-                            className="inline-flex items-center px-6 py-2.5 bg-brand-500 text-white text-sm font-bold rounded shadow-sm hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors"
-                        >
-                            Fortsæt <ChevronRight size={16} className="ml-2" />
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            className="inline-flex items-center px-8 py-2.5 bg-brand-500 text-white text-sm font-bold rounded shadow-sm hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-colors disabled:opacity-70"
-                        >
-                            {isSubmitting ? <><Loader2 size={16} className="animate-spin mr-2" /> Behandler...</> : 'Opret Webshop'}
-                        </button>
-                    )}
-                </div>
-            </div>
+            ))}
         </div>
-    );
-};
+      </div>
+
+      <div className="p-8 min-h-[400px]">
+        {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
+                <AlertCircle size={20} /> {error}
+            </div>
+        )}
+
+        {step === 1 && <StepCompany />}
+        {step === 2 && <StepBranding />}
+        {step === 3 && <StepIntegration />}
+      </div>
+
+      <div className="bg-gray-50 px-8 py-4 border-t border-gray-200 flex justify-between">
+        <button 
+            onClick={handlePrev}
+            disabled={step === 1}
+            className="px-4 py-2 text-gray-600 font-medium hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+            Tilbage
+        </button>
+        
+        {step < 3 ? (
+            <button 
+                onClick={handleNext}
+                className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 flex items-center shadow-sm"
+            >
+                Næste <ChevronRight size={16} className="ml-1" />
+            </button>
+        ) : (
+            <button 
+                onClick={handleFinish}
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-brand-600 text-white rounded-lg font-bold hover:bg-brand-700 shadow-sm flex items-center"
+            >
+                {isSubmitting ? <Loader2 className="animate-spin w-5 h-5" /> : "Afslut Opsætning"}
+            </button>
+        )}
+      </div>
+    </div>
+  );
+}
